@@ -1,9 +1,5 @@
 ### Module 6 Chatroom   
 
-#### Group Members:   
-Lin Li: 467362   
-Jie Miao: 463615
-
 #### Instruction:   
 * You can log in by clicking on Log in Button   
 * You can add friends and delete friends   

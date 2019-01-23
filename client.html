@@ -1,0 +1,375 @@
+<!DOCTYPE html>
+<html lang="en">
+   <head>
+    <title>socket.io chat room</title>
+      <meta charset="UTF-8">
+      <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.1/jquery.min.js"></script>
+
+        <style>
+          *{
+            font-family: sans-serif;
+          }
+          h3{
+            color:   #66CDAA;
+         }
+         #user_here{
+            color: DarkCyan;
+         }
+         #message{
+               position: fixed;
+               bottom: 0px;
+               width: 60%;
+               margin-bottom: 20px;
+               padding: 30px;
+            }
+
+         #message input{
+            width: 60%;
+            height: 40px;
+         }
+         #message label{
+            color: DarkCyan;
+            font-family: sans-serif;
+         }
+
+         #message button{
+             height: 45px;
+             width:20%;
+             background-color: DodgerBlue;
+             color: White;
+         }
+
+         #main{
+            float: right;
+            margin: 0 10%;
+            margin-left: 0px;
+            padding: 20px;
+            margin-bottom: 30px;
+            width: 190px;
+            height: 100%;
+            border-left: 10px solid Grey;
+            line-height: 5em;
+         }
+
+         #main button{
+            text-align: center;
+            background-color: DodgerBlue;
+            border: gray;
+            color: white;
+            height: 40px;
+            width:50%;
+            border: 2px solid;
+         }
+
+         #main input{
+            height: 40px;
+         }
+        #main label{
+          color:  #66CDAA;
+        }
+        #welcome{
+         display: none;
+        }
+
+
+
+   </style>
+   </head>
+      <div id="message">
+         <input type="text" id="message_input"/>
+         <br><br>
+         <button id="msg_button" onclick="sendMessage()">Send Public Message</button>
+         <button id="private_msg_button" onclick="sendPrivateMessage()">Send Private Message</button>
+         <button id="friend_msg_button" onclick="sendMessageToFriend()">Send Message to Friend</button>
+         <br><br>
+         <label>Send Image :<input type="file" id="imagefile" accept="image/*"></label>
+         <br>
+         <button> Send Image</button>
+    </div>
+      <div id="main">
+      <h3>ROOMS</h3>
+      <div id="welcome">Welcome, <label id="currentUser"></label></div>
+      <button id="login" onclick="login()">Login</button>
+      <div id="rooms"></div>
+      <h3>Add A New Room: </h3>
+      <input type="text" id="Roomname" style="display: none" required />
+      <button id="newRoom" style="display: none" onclick="newRoom()">Create A public room</button>
+      <button id="newPrivateRoom" style="display: none" onclick="newPrivateRoom()">Create A Private Room</button>
+      <br>
+      <div id="friends" style="display: none">
+         My friends: <div id="myFriendsList"></div>
+         <button id="showFriends" onclick="showMyFriends()">Show My Friend</button>
+         <input type="text" id="friendname" required />
+         <button id="addfriend" onclick="addFriend()">Add Friend</button>
+         <button id="deletfriend" onclick="deleteFriend()">Delete Friend</button>
+      </div>
+      <br>
+      <label>Stupid Person:<input type="text" id="stupid_person" /></label>
+      <button id="ban" onclick="ban()">BAN</button>
+      <button id="kick" onclick="kick()">KICK</button>
+      </div>
+
+      <h3>Current Room: </h3>
+      <div id="currentRoom"></div>
+      <h3>Users in room:</h3>
+      <div id="user_here"></div>
+      <div id="chatlog"></div>
+
+
+
+      <script src="/socket.io/socket.io.js"></script>
+      <script src="chatserver.js"></script>
+      <script>
+
+
+
+      var socketio = io.connect();
+
+      //update the chatting information in the client side
+      socketio.on("update_chat", function(username,data) {
+         //update the chatlog with the message or information
+         let new_dia = document.getElementById("chatlog").appendChild(document.createElement("p"));
+         new_dia.appendChild(document.createTextNode(username + " " + data));
+      });
+
+      //show who are in this chat room
+      socketio.on("users_here", function(users) {
+         //list everyone in the room
+         console.log("this is users for users_here: "+users);
+         $("#user_here").empty();
+         //document.getElementById("user_here").innerHTML += users;
+         users.forEach(user =>{
+               console.log("this is user: "+user);
+                var li  = document.createElement('li');
+                li.innerHTML = user;
+                $("#user_here").append(li);
+                //document.getElementById("user_here").insertBefore(li,document.getElementById("user_here").lastChild);
+              });
+      });
+
+      //by clicking on show my friends button. it shows user friend list
+      socketio.on("showMyFriends",function(users){
+         $("#myFriendsList").empty();
+         users.forEach(user =>{
+               console.log("this is user: "+user);
+                var li  = document.createElement('li');
+                li.innerHTML = user;
+                $("#myFriendsList").append(li);
+              });
+         
+      });
+
+      //display the messages
+      socketio.on("message_to_client",function(username, data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         document.getElementById("chatlog").appendChild(document.createTextNode(username+ ": " + data['message']));
+      });
+
+      // send private message in the client side
+      socketio.on("private_message_to_client",function(username, data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         var hr = document.createElement("hr");
+         var message = document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         var txt = document.createTextNode(username+ ": " + data['message']);
+         message.color = "red";
+         message.appendChild(txt);
+      });
+
+      // send private messge to your friend in the client side
+      socketio.on("friend_message_to_client",function(username, data) {
+         //Append an HR thematic break and the escaped HTML of the new message
+         var hr = document.createElement("hr");
+         var message = document.getElementById("chatlog").appendChild(document.createElement("hr"));
+         var txt = document.createTextNode("Your friend "+username+ "said to you: " + data['message']);
+         message.color = "blue";
+         message.appendChild(txt);
+      });
+
+      // active when click on send public message
+      function sendMessage(){
+         var msg = document.getElementById("message_input").value;
+         socketio.emit("message_to_server", {message:msg});
+      }
+
+      // active when click on send private message
+      function sendPrivateMessage(){
+         var msg = document.getElementById("message_input").value;
+         socketio.emit("private_message_to_server", {message:msg},prompt("Who do you want to send to?"));
+      }
+
+      // active when click on send message to friend
+      function sendMessageToFriend(){
+         var msg = document.getElementById("message_input").value;
+         socketio.emit("friend_message_to_server", {message:msg},prompt("Enter your friend name: "));
+      }
+
+   //display room information in the client side
+   socketio.on("displayRoom", function(rooms,room){
+         $('#rooms').empty();
+         console.log("this is rooms: "+ Object.keys(rooms));
+         console.log(Object.values(rooms));
+         rooms = Object.values(rooms);
+
+         for (var i = 0; i < rooms.length; i++){
+            currentRoom = rooms[i]
+            if ("password" in rooms[i]) {
+               $('#rooms').append('<div><a href="#" onclick="switchPrivateRoom(\''+ rooms[i].roomName + '\',\'' + rooms[i].password + '\')">'+rooms[i].roomName+'</a></div>');
+
+            } else {
+               $('#rooms').append('<div><a href="#" onclick="switchPublicRoom(\''+rooms[i].roomName+'\')">'+rooms[i].roomName+'</a></div>');
+            }
+         }
+
+      });
+
+      //update room info in the client side
+      socketio.on("updateRoom", function(roomName,message){
+         console.log("inside updateRoom");
+         if (message === "success") {
+
+            $('#chatlog').empty();
+            $('#currentRoom').empty();
+            document.getElementById("currentRoom").innerHTML +=  roomName;
+            console.log("currentRoom is"+roomName);
+         } else {
+            $('#currentRoom').empty();
+            document.getElementById("currentRoom").innerHTML += roomName;
+         }
+      });
+
+
+      // if login failed, ask for relogin
+      socketio.on("relogin",function(message){
+         alert(message);
+         login();
+      });
+
+      // show alert message
+      socketio.on("showAlert",function(message){
+         alert(message);
+      });
+
+      //update users in the client side
+      socketio.on("updateUser",function(username){
+         document.getElementById("login").style.display = 'none';
+         document.getElementById("rooms").style.display = 'block';
+         document.getElementById("newRoom").style.display = 'block';
+         document.getElementById("newPrivateRoom").style.display = 'block';
+         document.getElementById("Roomname").style.display = 'block';
+         document.getElementById('welcome').style.display = "block";
+         document.getElementById("friends").style.display = 'block';
+
+         $("#currentUser").append(username);
+      });
+
+
+      //sending images
+// reference: http://blog.marcon.me/post/31143865164/send-images-through-websockets
+    $('#imagefile').on('change', function(e){
+      //Get the first (and only one) file element
+      //that is included in the original event
+      var file = e.originalEvent.target.files[0],
+          reader = new FileReader();
+      //When the file has been read...
+      reader.onload = function(event){
+          socketio.emit('user_image', event.target.result);
+      };
+      //And now, read the image and base64
+      reader.readAsDataURL(file);
+    });
+
+    socketio.on('user_image', image);
+    function image(base64Image) {
+       document.getElementById("chatlog").append('<img src="' + base64Image + '"/>');
+    }
+
+   //active when click on login
+   function login(){
+      var r = prompt("What is your name?");
+      if (r !== null) {
+         socketio.emit("add_users", r);
+    } else {
+    }
+   }
+
+   //active when click on show my friends
+   function showMyFriends(){
+      socketio.emit('showMyFriends',friendname);
+   }
+
+   //active when click on add friend
+   function addFriend(){
+      var friendname = document.getElementById('friendname').value;
+      socketio.emit('addFriend',friendname);
+   }
+
+   //active when click on delete friend
+   function deleteFriend(){
+      var friendname = document.getElementById('friendname').value;
+      socketio.emit('deleteFriend',friendname);
+
+   }
+
+   // create a room and it is a public room in the client side
+   function newRoom(){
+         //get the new room value and send it to the server side
+         var roomName = document.getElementById("Roomname").value;
+         var pattern = new RegExp(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/);
+         // check if a room name contains punctuation
+         if (pattern.test(roomName)){
+
+            alert("Reenter a room name without punctuation");
+         } else {
+            socketio.emit("addPublicRoom", roomName);
+         }
+         //socketio.emit("addPublicRoom", roomName);
+      }
+
+   // create a room and it is a private room in the client side
+   function newPrivateRoom(){
+         var roomName = document.getElementById("Roomname").value;
+         var pattern = new RegExp(/[~`!#$%\^&*+=\-\[\]\\';,/{}|\\":<>\?]/);
+         // check if a room name contains punctuation
+         if (pattern.test(roomName)){
+
+            alert("Reenter a room name without punctuation");
+         } else {
+            socketio.emit("addPrivateRoom", roomName, prompt("Please Set a Password."));
+         }
+         
+      }
+
+   //switch to a private room in client side
+   function switchPrivateRoom(data,pwd){
+      socketio.emit("switchPrivateRoom",data,pwd, prompt("Please enter the password."));
+   }
+
+   //switch to a public room in client side
+   function switchPublicRoom(data){
+      console.log("inside switchPublicRoom");
+      socketio.emit("switchPublicRoom",data);
+   }
+
+   // kick someone out of the chat room and send to server side
+   function kick(){
+         console.log('inside kick() in client.');
+            var kicked = document.getElementById("stupid_person").value;
+            var roomName = document.getElementById("currentRoom").innerHTML;
+            socketio.emit("kick", kicked,roomName);
+         }
+
+
+   // make someone stop talking in the chat room
+  function ban(){
+         //get the name of who to ban and send it to the server
+         var ban_person = document.getElementById("stupid_person").value;
+         var roomName = document.getElementById("currentRoom").innerHTML;
+         socketio.emit('ban', ban_person,roomName);
+      }
+
+
+
+      </script> 
+   </body>
+</html>
